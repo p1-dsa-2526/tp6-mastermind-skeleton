@@ -5,53 +5,35 @@ set(CMAKE_C_STANDARD 11)
 
 include_directories(.)
 
+# Collect all source files (excluding test files and main.c)
+file(GLOB LIB_SOURCES "*.c")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "test_.*\\.c$")
+list(FILTER LIB_SOURCES EXCLUDE REGEX "main\\.c$")
+
 # Main executable
-add_executable(mastermind_game
-    display.c
-    display.h
-    main.c
-    mastermind.c
-    mastermind.h)
+add_executable(mastermind_game main.c ${LIB_SOURCES})
 
-# Test executable for mastermind functions
-add_executable(test_mastermind
-    test_mastermind.c
-    mastermind.c
-    mastermind.h)
-
-# Test executable for display functions
-add_executable(test_display
-    test_display.c
-    display.c
-    display.h
-    mastermind.c
-    mastermind.h)
-
-# Enable CTest
+# Auto-discover test files and create test executables
 enable_testing()
+file(GLOB TEST_FILES "test_*.c")
 
-# Mastermind tests
-set(MASTERMIND_TEST_SUITES random_comb well_placed present check_result)
-foreach(suite ${MASTERMIND_TEST_SUITES})
-    add_test(
-        NAME MastermindTests.${suite}
-        COMMAND test_mastermind --filter=${suite}.* --output=${CMAKE_SOURCE_DIR}/test_reports/test_mastermind.${suite}.xml
-    )
-    set_tests_properties(MastermindTests.${suite} PROPERTIES
-        TIMEOUT 30
-        LABELS "unit"
-    )
-endforeach()
+foreach(TEST_FILE ${TEST_FILES})
+    # Get executable name from filename (e.g., test_mastermind.c -> test_mastermind)
+    get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
 
-# Display tests
-set(DISPLAY_TEST_SUITES init_grid free_grid update_grid integration)
-foreach(suite ${DISPLAY_TEST_SUITES})
-    add_test(
-        NAME DisplayTests.${suite}
-        COMMAND test_display --filter=${suite}.* --output=${CMAKE_SOURCE_DIR}/test_reports/test_display.${suite}.xml
-    )
-    set_tests_properties(DisplayTests.${suite} PROPERTIES
-        TIMEOUT 30
-        LABELS "unit"
-    )
+    # Create test executable
+    add_executable(${TEST_NAME} ${TEST_FILE} ${LIB_SOURCES})
+
+    # Discover UTEST() macros in the test file
+    file(READ ${TEST_FILE} TEST_SOURCE)
+    string(REGEX MATCHALL "UTEST\\([^,]+,[^)]+\\)" TEST_MATCHES "${TEST_SOURCE}")
+
+    foreach(match ${TEST_MATCHES})
+        string(REGEX REPLACE "UTEST\\([ ]*([^, ]+)[ ]*,[ ]*([^) ]+)[ ]*\\)" "\\1.\\2" TEST_CASE "${match}")
+        add_test(
+            NAME ${TEST_NAME}.${TEST_CASE}
+            COMMAND ${TEST_NAME} --filter=${TEST_CASE} --output=${CMAKE_SOURCE_DIR}/test_reports/${TEST_NAME}.${TEST_CASE}.xml
+        )
+        set_tests_properties(${TEST_NAME}.${TEST_CASE} PROPERTIES TIMEOUT 30 LABELS "unit")
+    endforeach()
 endforeach()
