@@ -411,9 +411,6 @@ UTEST_EXTERN struct utest_state_s utest_state;
 #pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
 #endif
 #define UTEST_PRINTF(...)                                                      \
-  if (utest_state.output) {                                                    \
-    fprintf(utest_state.output, __VA_ARGS__);                                  \
-  }                                                                            \
   printf(__VA_ARGS__)
 #ifdef __clang__
 #pragma clang diagnostic pop
@@ -1597,6 +1594,12 @@ int utest_main(int argc, const char *const argv[]) {
     ns = utest_ns() - ns;
 
     if (utest_state.output) {
+      if (UTEST_TEST_FAILURE == result) {
+        fprintf(utest_state.output, "<failure message=\"Test failed\">%s failed</failure>",
+                utest_state.tests[index].name);
+      } else if (UTEST_TEST_SKIPPED == result) {
+        fprintf(utest_state.output, "<skipped/>");
+      }
       fprintf(utest_state.output, "</testcase>\n");
     }
 
