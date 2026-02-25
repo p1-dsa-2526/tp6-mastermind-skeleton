@@ -33,10 +33,6 @@ jobs:
           report_individual_runs: true
           deduplicate_classes_by_file_name: false
 
-      - name: Echo JSON
-        if: always()
-        run: cat test-results.json
-
       - name: Notify GitHub Classroom of results
         if: always()
         run: |
