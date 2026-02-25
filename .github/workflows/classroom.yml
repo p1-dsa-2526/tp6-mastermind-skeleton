@@ -1,0 +1,50 @@
+name: Autograding Tests
+'on':
+  - repository_dispatch
+permissions:
+  checks: write
+  actions: read
+  contents: write
+  pull-requests: write
+jobs:
+  run-autograding-tests:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        run: bash ./run_tests.sh
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        id: test-results
+        if: always()
+        with:
+          files: |
+            test_reports/**/*.xml
+          check_run: false
+          comment_title: "Test Results"
+          json_file: test-results.json
+          json_test_case_results: true
+          json_suite_details: true
+          report_individual_runs: true
+          deduplicate_classes_by_file_name: false
+
+      - name: Echo JSON
+        if: always()
+        run: cat test-results.json
+
+      - name: Notify GitHub Classroom of results
+        if: always()
+        run: |
+          PASS=${{ fromJSON(steps.test-results.outputs.json).stats.tests_succ }}
+          TOTAL=${{ fromJSON(steps.test-results.outputs.json).stats.tests }}
+
+          echo "::notice title=Autograding complete::Points ${PASS}/${TOTAL}"
+          echo "::notice title=Autograding report::{\"totalPoints\":${PASS},\"maxPoints\":${TOTAL}}"
+
+      - name: Fail if tests failed
+        if: fromJSON(steps.test-results.outputs.json).conclusion != 'success'
+        run: exit 1
