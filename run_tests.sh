@@ -1,10 +1,8 @@
 #!/bin/bash
 
-# Generic test runner using CTest
+# Generic test runner using CTest and Catch2
 # Automatically runs all tests declared in CMakeLists.txt
 # Usage: ./run_tests.sh
-
-set -e
 
 BUILD_DIR="cmake-build-debug"
 REPORTS_DIR="test_reports"
@@ -19,8 +17,13 @@ cmake -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Debug
 cmake --build "$BUILD_DIR"
 
 echo ""
-echo "=== Running tests with CTest ==="
+echo "=== Running tests ==="
 
-# Run all tests declared in CMakeLists.txt using CTest
-cd "$BUILD_DIR"
-ctest --output-on-failure --verbose
+if "$BUILD_DIR/test_main" --reporter console --reporter "junit::out=$REPORTS_DIR/test_main.xml"; then
+    echo ""
+    echo "All tests passed!"
+else
+    echo ""
+    echo "Some tests failed!"
+    exit 1
+fi
